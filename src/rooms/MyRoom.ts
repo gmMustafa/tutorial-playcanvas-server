@@ -2,47 +2,93 @@ import { Room, Client } from "@colyseus/core";
 import { MyRoomState, Player } from "./schema/MyRoomState";
 
 export class MyRoom extends Room<MyRoomState> {
-  maxClients = 5;
-  state = new MyRoomState();
 
-  onCreate(options: any) {
-    console.log("MyRoom created.");
+    maxClients = 5;
 
-    this.onMessage("updatePosition", (client, data) => {
-      console.log("update received -> ");
-      console.debug(JSON.stringify(data));
-      const player = this.state.players.get(client.sessionId);
-      player.x = data["x"];
-      player.y = data['y'];
-      player.z = data["z"];
-    });
-  }
+    onCreate(options: any) {
+        this.setState(new MyRoomState());
 
-  onJoin(client: Client, options: any) {
-    console.log(client.sessionId, "joined!");
+        this.onMessage("updatePosition", (client, data) => {
+            console.log("update received -> ");
+            console.debug(JSON.stringify(data));
+            const player = this.state.players.get(client.sessionId);
+            player.x = data["x"];
+            player.y = data['y'];
+            player.z = data["z"];
+        });
+       
+      
+        this.onMessage("chat", (client, message) => {    
+        
+            this.broadcast("chat", {
+            sessionId: client.sessionId,
+            message: message
+    
+         }, { except: client });            
+        
+        });
+      
+      
+        this.onMessage("mouseMove", (client, message) => {
 
-    // create Player instance
-    const player = new Player();
+          this.broadcast("mouseMove", {
+          sessionId: client.sessionId,
+          message: message
+    
+          }, { except: client });
 
-    // place Player at a random position in the floor
-    const FLOOR_SIZE = 4;
-    player.x = -(FLOOR_SIZE / 2) + (Math.random() * FLOOR_SIZE);
-    player.y = 1.031;
-    player.z = -(FLOOR_SIZE / 2) + (Math.random() * FLOOR_SIZE);
+        });
+      
+      
+       this.onMessage("jetFire", (client, message) => {
 
-    // place player in the map of players by its sessionId
-    // (client.sessionId is unique per connection!)
-    this.state.players.set(client.sessionId, player);
+          this.broadcast("jetFire", {
+          sessionId: client.sessionId,
+          message: message
+    
+          }, { except: client });
 
-    console.log("new player =>", player.toJSON());
-  }
+        });
+      
+       this.onMessage("healthDamage", (client, message) => {
 
-  onLeave(client: Client, consented: boolean) {
-    this.state.players.delete(client.sessionId);
-    console.log(client.sessionId, "left!");
-  }
+          this.broadcast("healthDamage", {
+          sessionId: client.sessionId,
+          message: message
+    
+          }, { except: client });
 
-  onDispose() {
-    console.log("room", this.roomId, "disposing...");
-  }
+        });
+      
+        this.onMessage("userData", (client, message) => {
+
+          this.broadcast("userData", {
+          sessionId: client.sessionId,
+          message: message
+    
+          }, { except: client });
+
+        });
+      
+}
+
+    onJoin(client: Client, options: any) {
+        // Randomize player position on initializing.
+        const newPlayer = new Player();
+        newPlayer.x = Math.random() * 7.2 - 3.6;
+        newPlayer.y = 1.031;
+        newPlayer.z = Math.random() * 7.2 - 3.6;
+        this.state.players.set(client.sessionId, newPlayer);
+        console.log(client.sessionId, "joined!");
+    }
+
+    onLeave(client: Client, consented: boolean) {
+        this.state.players.delete(client.sessionId);
+        console.log(client.sessionId, "left!");
+    }
+
+
+    onDispose() {
+        console.log("room", this.roomId, "disposing...");
+    }
 }
